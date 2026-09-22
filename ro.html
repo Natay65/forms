@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planificarea șantierelor — chestionar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --hall:#E6EAEE;      /* sol du hall */
+  --panel:#FFFFFF;
+  --ink:#18222D;
+  --muted:#5B6773;
+  --plan:#2F5D8A;      /* bleu plan */
+  --tape:#F2C230;      /* scotch de marquage */
+  --line:#C9D1D9;
+  --error:#B3261E;
+  --font:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --hall:#12181F; --panel:#1B232C; --ink:#E8EDF2; --muted:#9AA6B2;
+    --plan:#7FAEDB; --tape:#F2C230; --line:#303B47; --error:#F2867E;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;background:var(--hall);color:var(--ink);
+  font-family:var(--font);font-size:17px;line-height:1.5;
+  background-image:
+    linear-gradient(var(--line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:48px 48px;background-attachment:fixed;
+}
+.wrap{max-width:680px;margin:0 auto;padding:28px 18px 60px}
+
+/* ---- plan du hall = progression ---- */
+.hall{display:flex;gap:6px;margin:0 0 22px}
+.stand{
+  flex:1;height:34px;border:2px solid var(--plan);background:var(--panel);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:600;font-size:15px;color:var(--plan);
+  transition:background .25s,color .25s;
+}
+.stand.done{background:var(--plan);color:var(--panel)}
+.stand.current{
+  border-color:var(--ink);color:var(--ink);
+  box-shadow:0 0 0 3px var(--tape);
+}
+
+.card{background:var(--panel);border:1px solid var(--line);padding:26px 22px 22px}
+h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.05;margin:0 0 12px;letter-spacing:.2px}
+h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1;margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 18px;max-width:60ch}
+.intro p{margin:0 0 12px;max-width:60ch}
+.tape{height:8px;width:120px;margin:0 0 18px;
+  background:repeating-linear-gradient(-45deg,var(--tape) 0 10px,var(--ink) 10px 20px)}
+
+.q{margin:0 0 26px;border:0;padding:0}
+.q legend,.q > label.qt{display:block;font-weight:600;font-size:18px;margin:0 0 4px;padding:0}
+.hint{display:block;color:var(--muted);font-size:15px;margin:0 0 10px}
+.req{color:var(--plan);font-weight:600}
+
+input[type=text],input[type=email],textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--hall);
+  border:1.5px solid var(--line);padding:11px 12px;border-radius:2px;
+}
+textarea{min-height:92px;resize:vertical}
+input:focus,textarea:focus{outline:none;border-color:var(--plan);box-shadow:0 0 0 3px color-mix(in srgb,var(--plan) 25%,transparent)}
+.other{margin-top:10px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.chip span{
+  display:inline-block;padding:9px 14px;border:1.5px solid var(--line);
+  background:var(--panel);border-radius:2px;font-size:16px;cursor:pointer;
+  user-select:none;transition:border-color .15s,background .15s;
+}
+.chip input:checked + span{background:var(--plan);border-color:var(--plan);color:var(--panel)}
+.chip input:focus-visible + span{outline:3px solid var(--tape);outline-offset:2px}
+.chip input:disabled + span{opacity:.4;cursor:not-allowed}
+.counter{font-size:14px;color:var(--muted);margin-top:8px}
+
+.err{color:var(--error);font-size:15px;margin-top:8px;display:none}
+.q.invalid .err{display:block}
+
+.nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px}
+button{
+  font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.3px;
+  padding:12px 22px;border:2px solid var(--ink);background:var(--ink);color:var(--panel);
+  cursor:pointer;border-radius:2px;
+}
+button.ghost{background:transparent;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+button[disabled]{opacity:.5;cursor:wait}
+.saved{font-size:14px;color:var(--muted);text-align:center;margin-top:14px}
+.done-screen{text-align:left}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:34px}h2{font-size:26px}.card{padding:22px 16px 18px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="hall" id="hall" aria-hidden="true"></div>
+
+  <section class="card intro" id="intro">
+    <div class="tape"></div>
+    <h1>Planificarea șantierelor tale, mai simplă</h1>
+    <p>Vrem să construim o unealtă făcută pe măsura felului în care lucrezi: să-ți repartizezi echipele, să le anunți, să le urmărești orele. Nu un program generic.</p>
+    <p>Pentru asta, trebuie să înțelegem cum te organizezi azi și ce te face să pierzi timp. Durează cam 10 minute, aproape totul se face dintr-un clic.</p>
+    <p class="lead">Răspunsurile tale se salvează pe acest dispozitiv pe măsură ce completezi: poți să te oprești și să continui mai târziu.</p>
+    <div class="nav"><span></span><button type="button" id="start">Începe</button></div>
+  </section>
+
+  <form class="card hidden" id="form" novalidate>
+    <h2 id="stepTitle"></h2>
+    <p class="lead" id="stepLead"></p>
+    <div id="stepBody"></div>
+    <div class="nav">
+      <button type="button" class="ghost" id="prev">Înapoi</button>
+      <button type="button" id="next">Continuă</button>
+    </div>
+    <p class="err" id="sendErr" role="alert" style="display:none"></p>
+  </form>
+
+  <section class="card done-screen hidden" id="done">
+    <div class="tape"></div>
+    <h2>Trimis, mulțumim</h2>
+    <p>Analizăm răspunsurile tale și revenim repede cu o primă propunere.</p>
+  </section>
+
+  <p class="saved" id="savedNote"></p>
+</main>
+
+<script>
+/* ========= CONFIG ========= */
+const FORMSPREE_ID = "maenognq";
+const STORAGE_KEY = "questionnaire-stands-ro-v1";
+
+/* Chaque texte = [roumain affiché, français envoyé dans le mail] */
+const MONTHS = [["Ian","Jan"],["Feb","Fév"],["Mar","Mars"],["Apr","Avr"],["Mai","Mai"],["Iun","Juin"],["Iul","Juil"],["Aug","Août"],["Sep","Sept"],["Oct","Oct"],["Nov","Nov"],["Dec","Déc"]];
+
+const STEPS = [
+  { title:["Firma ta","Ton entreprise"], lead:"Ca să știm cu cine vorbim și la ce scară.", qs:[
+    {id:"nom", type:"text", label:["Numele și prenumele tău","Prénom et nom"], req:true},
+    {id:"entreprise", type:"text", label:["Numele firmei","Nom de l'entreprise"], req:true},
+    {id:"contact", type:"text", label:["Email sau telefon","Email ou téléphone"], hint:"Ca să revenim la tine cu o propunere.", req:true},
+    {id:"effectif", type:"single", req:true, label:["Câte persoane lucrează pe șantierele tale în perioadele aglomerate?","Personnes sur les chantiers en période chargée"],
+      opts:[["1–5","1 à 5"],["6–15","6 à 15"],["16–30","16 à 30"],["31–60","31 à 60"],["Peste 60","Plus de 60"]]},
+    {id:"contrats", type:"multi", other:true, label:["Cine lucrează pe șantierele tale?","Qui travaille sur les chantiers"], hint:"Bifează tot ce se aplică.",
+      opts:[["Angajați cu CDI","Salariés en CDI"],["Angajați cu CDD","CDD"],["Personal prin agenție de interim","Intérimaires"],["Freelanceri / auto-entrepreneurs","Freelances / auto-entrepreneurs"],["Subcontractori","Sous-traitants"]]},
+    {id:"profils", type:"multi", other:true, label:["Ce profiluri trebuie să repartizezi pe șantiere?","Profils à répartir"],
+      opts:[["Montatori","Monteurs / poseurs"],["Tâmplari / amenajatori","Menuisiers / agenceurs"],["Electricieni","Électriciens"],["Șoferi / logistică","Chauffeurs / logistique"],["Șefi de echipă","Chefs d'équipe"],["Semnalistică / grafică","Signalétique / graphisme"]]},
+  ]},
+  { title:["Activitatea ta","Ton activité"], lead:"Ritmul și forma șantierelor tale.", qs:[
+    {id:"chantiers_mois", type:"single", label:["În medie, câte șantiere pe lună?","Chantiers par mois (moyenne)"],
+      opts:[["1–5","1 à 5"],["6–15","6 à 15"],["16–30","16 à 30"],["Peste 30","Plus de 30"]]},
+    {id:"simultanes", type:"single", label:["În perioadele de vârf, câte șantiere în același timp?","Chantiers simultanés au pic"],
+      opts:[["1","1"],["2 sau 3","2 ou 3"],["4–6","4 à 6"],["Peste 6","Plus de 6"]]},
+    {id:"saison", type:"multi", label:["Lunile cele mai aglomerate","Mois les plus chargés"], opts:MONTHS},
+    {id:"zone", type:"multi", label:["Unde au loc șantierele tale?","Zone des chantiers"],
+      opts:[["În regiunea mea","Dans ma région"],["Oriunde în Franța","Partout en France"],["În străinătate","À l'étranger"]]},
+    {id:"deroulement", type:"textarea", label:["Povestește cum decurge un șantier tipic, de la comandă până la demontare.","Déroulement d'un chantier type"],
+      hint:"Câte zile de montaj, cine e prezent, cine decide echipa, ce se întâmplă în ziua evenimentului…"},
+  ]},
+  { title:["Planificare și echipe","Planning et équipes"], lead:"Cum îți repartizezi și îți anunți oamenii azi.", qs:[
+    {id:"outil_planning", type:"multi", other:true, label:["Cu ce îți faci planificarea?","Outil de planning"],
+      opts:[["Excel / Google Sheets","Excel / Google Sheets"],["Hârtie sau tablă albă","Papier ou tableau blanc"],["Calendar (Google, Outlook…)","Agenda (Google, Outlook…)"],["Un program specializat","Un logiciel dédié"],["Totul e în capul meu","Tout est dans ma tête"]]},
+    {id:"qui_planning", type:"single", label:["Cine se ocupă de planificare?","Qui fait le planning"],
+      opts:[["Doar eu","Moi seul"],["Eu și încă o persoană","Moi et une autre personne"],["Altcineva","Quelqu'un d'autre"],["Mai multe persoane, în funcție de șantier","Plusieurs personnes selon les chantiers"]]},
+    {id:"notif", type:"multi", other:true, label:["Cum îți anunți echipele că sunt programate pe un șantier?","Comment il prévient les équipes"],
+      opts:[["WhatsApp individual","WhatsApp individuel"],["Grup de WhatsApp","Groupe WhatsApp"],["SMS","SMS"],["Telefon","Appel"],["Email","Email"]]},
+    {id:"infos", type:"multi", label:["Ce informații trebuie să le transmiți pentru un șantier?","Infos à transmettre pour un chantier"],
+      opts:[["Adresa și accesul","Adresse et accès"],["Programul","Horaires"],["Cine e în echipă","Qui est dans l'équipe"],["Persoana de contact la fața locului","Contact sur place"],["Planurile standului","Plans du stand"],["Lista de materiale","Liste du matériel"],["Ecusoane / acreditări","Badges / accréditations"],["Vehiculul de luat","Véhicule à prendre"]]},
+    {id:"confirmation", type:"single", label:["De unde știi că au primit informația și că vor veni?","Confirmation de réception / présence"],
+      opts:[["Îmi răspund singuri","Ils répondent d'eux-mêmes"],["Trebuie să revin cu mesaje sau să sun","Je dois relancer ou appeler"],["Aflu cu adevărat abia în ziua respectivă","Je ne le sais que le jour J"]]},
+    {id:"dispos", type:"single", label:["De unde știi cine e disponibil?","Connaissance des disponibilités"],
+      opts:[["Întreb de fiecare dată","Je demande à chaque fois"],["Mă anunță ei când lipsesc","Ils préviennent de leurs absences"],["Văd într-o aplicație","Je le vois dans un outil"],["Nu prea știu","Je ne le sais pas vraiment"]]},
+    {id:"criteres", type:"multi", other:true, label:["Ce contează când alegi pe cine trimiți?","Critères pour choisir qui envoyer"],
+      opts:[["Meseria / competența","Métier / compétence"],["Cine cunoaște deja clientul sau locul","Connaît déjà le client ou le lieu"],["Cine locuiește aproape","Habite près"],["Permisul / un vehicul","Permis / véhicule"],["Orele deja lucrate în săptămână","Heures déjà faites dans la semaine"],["Cine se înțelege bine cu cine","Affinités d'équipe"]]},
+  ]},
+  { title:["Orele lucrate","Les heures"], lead:"Ce se întâmplă după șantier.", qs:[
+    {id:"heures_releve", type:"multi", other:true, label:["Cum aduni orele lucrate?","Relevé des heures"],
+      opts:[["Mi le trimit prin mesaj","Envoyées par message"],["Foaie de hârtie","Feuille papier"],["Tabel (Excel…)","Tableur"],["Aplicație sau pontaj","Appli ou pointeuse"],["Le deduc din planificare","Déduites du planning"],["Nu le urmăresc precis","Pas de suivi précis"]]},
+    {id:"heures_usage", type:"multi", label:["La ce folosesc apoi orele?","Usage des heures"],
+      opts:[["Pregătirea salariilor","Préparer la paie"],["Facturarea clientului","Facturer le client"],["Să știu dacă un șantier e rentabil","Rentabilité par chantier"],["Controlul orelor suplimentare și al timpului de odihnă","Contrôle heures sup / repos"]]},
+    {id:"logiciels", type:"text", label:["Ce programe folosești deja (devize, facturare, contabilitate, salarii)?","Logiciels déjà utilisés"],
+      hint:"Ca totul să comunice și să nu fie nevoie să introduci datele de două ori."},
+  ]},
+  { title:["Ce te apasă","Ce qui lui pèse"], lead:"Cea mai importantă parte a chestionarului. Fii sincer.", qs:[
+    {id:"taches_temps", type:"multi", max:3, req:true, label:["Alege cele 3 sarcini care îți iau cel mai mult timp","Top 3 des tâches qui prennent le plus de temps"],
+      opts:[["Să fac planificarea","Construire le planning"],["Să gestionez schimbările de ultim moment","Changements de dernière minute"],["Să găsesc un înlocuitor","Trouver un remplaçant"],["Să insist ca să primesc confirmări","Relancer pour les confirmations"],["Să răspund la „unde e, la ce oră?”","Répondre aux « c'est où, à quelle heure ? »"],["Să știu cine e disponibil","Savoir qui est dispo"],["Să adun orele","Rassembler les heures"],["Să verific orele, să rezolv neînțelegerile","Vérifier les heures / désaccords"],["Să pregătesc datele pentru salarii","Préparer les éléments de paie"],["Să respect timpul de odihnă și orele suplimentare","Temps de repos et heures sup"]]},
+    {id:"taches_details", type:"textarea", label:["Vrei să precizezi ceva?","Précisions sur les tâches"],
+      hint:"O sarcină care lipsește din listă, sau ce face ca una dintre ele să fie deosebit de obositoare."},
+    {id:"changements", type:"single", label:["În sezonul aglomerat, câte schimbări de ultim moment pe săptămână?","Changements de dernière minute / semaine"],
+      opts:[["Aproape niciuna","Presque aucun"],["1 sau 2","1 ou 2"],["3–5","3 à 5"],["Peste 5","Plus de 5"]]},
+    {id:"galere", type:"textarea", label:["Povestește ultima problemă legată de planificare sau de echipe.","Dernière galère"],
+      hint:"Ce s-a întâmplat și cât te-a costat."},
+  ]},
+  { title:["Timpul pe care ți-l ia","Temps perdu"], lead:"Ca să calculăm ce ai putea recupera. O estimare e suficientă.", qs:[
+    {id:"h_planning", type:"single", label:["Pe săptămână, cât timp petreci cu planificarea și repartizarea echipelor?","Heures / semaine sur planning et dispatch"],
+      hint:"Inclusiv mesaje și telefoane.",
+      opts:[["Sub 2 ore","Moins de 2 h"],["2–5 ore","2 à 5 h"],["5–10 ore","5 à 10 h"],["10–20 ore","10 à 20 h"],["Peste 20 de ore","Plus de 20 h"]]},
+    {id:"h_heures", type:"single", label:["Pe lună, cât timp îți ia să aduni și să verifici orele?","Heures / mois sur les relevés d'heures"],
+      opts:[["Sub 2 ore","Moins de 2 h"],["2–5 ore","2 à 5 h"],["5–10 ore","5 à 10 h"],["Peste 10 ore","Plus de 10 h"]]},
+    {id:"autres_personnes", type:"single", label:["Mai pierd și alte persoane timp cu asta?","Autres personnes impliquées"],
+      opts:[["Nu, doar eu","Non, juste moi"],["Da, o persoană","Oui, une personne"],["Da, mai multe","Oui, plusieurs"]]},
+    {id:"rates", type:"single", label:["Pe lună, câte ratări?","Ratés par mois"],
+      hint:"Cineva care nu a venit, locul greșit, ora greșită, echipă incompletă…",
+      opts:[["Niciuna","Aucun"],["1 sau 2","1 ou 2"],["3–5","3 à 5"],["Peste 5","Plus de 5"]]},
+    {id:"cout_rate", type:"textarea", label:["Când se întâmplă, ce te costă?","Coût d'un raté"],
+      hint:"Întârziere, penalități, ore suplimentare, client nemulțumit, weekendul tău…"},
+    {id:"temps_libre", type:"textarea", label:["Dacă ai recupera acest timp, ce ai face cu el?","Ce qu'il ferait du temps gagné"]},
+  ]},
+  { title:["Unealta ta ideală","Outil idéal"], lead:"Ultima etapă.", qs:[
+    {id:"smartphone", type:"single", label:["Toți oamenii din echipe au smartphone?","Équipes équipées de smartphones"],
+      opts:[["Da, toți","Oui, tous"],["Majoritatea","La plupart"],["Nu chiar","Pas vraiment"]]},
+    {id:"appareil", type:"single", label:["Tu ai lucra mai ales de pe…","Il gérerait surtout depuis"],
+      opts:[["Calculator","Ordinateur"],["Telefon","Téléphone"],["Ambele","Les deux"]]},
+    {id:"fonctions_employes", type:"multi", label:["Angajații tăi ar trebui să poată…","Les employés devraient pouvoir"],
+      opts:[["Să-și vadă programul","Voir leur planning"],["Să-și confirme prezența","Confirmer leur présence"],["Să-și declare orele","Déclarer leurs heures"],["Să anunțe când nu sunt disponibili","Signaler leurs indispos"],["Să vadă informațiile și planurile șantierului","Infos et plans du chantier"],["Să semnaleze o problemă la fața locului","Signaler un problème sur place"]]},
+    {id:"une_chose", type:"textarea", label:["Dacă unealta ar trebui să facă un singur lucru perfect, care ar fi acela?","La seule chose à faire parfaitement"]},
+    {id:"delai", type:"single", label:["Când ai vrea să fie gata?","Délai souhaité"],
+      opts:[["Cât mai repede","Dès que possible"],["Înainte de următorul sezon aglomerat","Avant la prochaine haute saison"],["Nu e urgent","Pas d'urgence"]]},
+    {id:"libre", type:"textarea", label:["Mai vrei să ne spui ceva?","Autre chose"]},
+  ]},
+];
+
+/* ========= STATE ========= */
+let data = {};
+let step = 0;
+try { const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); if (s) { data = s.data || {}; step = s.step || 0; } } catch(e) {}
+const save = () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({data, step})); } catch(e) {} };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function drawHall(){
+  $("hall").innerHTML = STEPS.map((s,i) =>
+    `<div class="stand ${i<step?'done':''} ${i===step?'current':''}">${i+1}</div>`).join("");
+}
+
+function renderQ(q){
+  const reqMark = q.req ? ' <span class="req">*</span>' : '';
+  const hint = q.hint ? `<span class="hint">${esc(q.hint)}</span>` : '';
+  const errMsg = q.max ? `Alege maximum ${q.max} răspunsuri, cel puțin unul.` : 'Acest răspuns este necesar.';
+  const label = esc(q.label[0]);
+  if (q.type === "text" || q.type === "textarea"){
+    const v = esc(data[q.id] || "");
+    const field = q.type === "text"
+      ? `<input type="text" id="f_${q.id}" data-id="${q.id}" value="${v}">`
+      : `<textarea id="f_${q.id}" data-id="${q.id}">${v}</textarea>`;
+    return `<div class="q" data-q="${q.id}"><label class="qt" for="f_${q.id}">${label}${reqMark}</label>${hint}${field}<div class="err">${errMsg}</div></div>`;
+  }
+  const multi = q.type === "multi";
+  const cur = data[q.id] || (multi ? [] : "");
+  const chips = q.opts.map(([ro]) => {
+    const checked = multi ? cur.includes(ro) : cur === ro;
+    return `<label class="chip"><input type="${multi?'checkbox':'radio'}" name="${q.id}" value="${esc(ro)}" ${checked?'checked':''}><span>${esc(ro)}</span></label>`;
+  }).join("");
+  const other = q.other ? `<input type="text" class="other" data-id="${q.id}_autre" placeholder="Altceva, precizează aici" aria-label="Alt răspuns" value="${esc(data[q.id+'_autre']||'')}">` : '';
+  const counter = q.max ? `<div class="counter" id="c_${q.id}"></div>` : '';
+  return `<fieldset class="q" data-q="${q.id}"><legend>${label}${reqMark}</legend>${hint}<div class="chips">${chips}</div>${other}${counter}<div class="err">${errMsg}</div></fieldset>`;
+}
+
+function renderStep(){
+  const s = STEPS[step];
+  $("stepTitle").textContent = s.title[0];
+  $("stepLead").textContent = s.lead;
+  $("stepBody").innerHTML = s.qs.map(renderQ).join("");
+  $("prev").style.visibility = step === 0 ? "hidden" : "visible";
+  $("next").textContent = step === STEPS.length - 1 ? "Trimite răspunsurile" : "Continuă";
+  s.qs.filter(q => q.max).forEach(updateMax);
+  drawHall();
+  window.scrollTo({top:0});
+}
+
+function updateMax(q){
+  const n = (data[q.id] || []).length;
+  document.querySelectorAll(`input[name="${q.id}"]`).forEach(i => { i.disabled = !i.checked && n >= q.max; });
+  const c = $("c_"+q.id); if (c) c.textContent = `${n} din ${q.max}`;
+}
+
+$("stepBody").addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.id){ data[t.dataset.id] = t.value; }
+  else if (t.type === "radio"){ data[t.name] = t.value; }
+  else if (t.type === "checkbox"){
+    data[t.name] = [...document.querySelectorAll(`input[name="${t.name}"]:checked`)].map(i => i.value);
+    const q = STEPS[step].qs.find(q => q.id === t.name);
+    if (q && q.max) updateMax(q);
+  }
+  const box = t.closest(".q"); if (box) box.classList.remove("invalid");
+  save();
+});
+
+function validate(){
+  let ok = true, first = null;
+  STEPS[step].qs.forEach(q => {
+    if (!q.req) return;
+    const v = data[q.id];
+    const empty = Array.isArray(v) ? v.length === 0 : !String(v || "").trim();
+    const box = document.querySelector(`[data-q="${q.id}"]`);
+    if (empty){ ok = false; box.classList.add("invalid"); first = first || box; }
+  });
+  if (first) first.scrollIntoView({behavior:"smooth", block:"center"});
+  return ok;
+}
+
+$("start").onclick = () => { $("intro").classList.add("hidden"); $("form").classList.remove("hidden"); renderStep(); };
+$("prev").onclick = () => { if (step > 0){ step--; save(); renderStep(); } };
+$("next").onclick = async () => {
+  if (!validate()) return;
+  if (step < STEPS.length - 1){ step++; save(); renderStep(); return; }
+  await send();
+};
+
+/* Le mail arrive en français : choix traduits, textes libres tels quels (en roumain) */
+async function send(){
+  const btn = $("next"), err = $("sendErr");
+  btn.disabled = true; btn.textContent = "Se trimite…"; err.style.display = "none";
+  const payload = { _subject: `Questionnaire planning (RO) — ${data.entreprise || "sans nom"}`, "Langue du formulaire": "Roumain — textes libres en roumain" };
+  STEPS.forEach(s => s.qs.forEach(q => {
+    const key = `${s.title[1]} | ${q.label[1]}`;
+    const v = data[q.id];
+    const fr = ro => { const o = (q.opts || []).find(p => p[0] === ro); return o ? o[1] : ro; };
+    payload[key] = Array.isArray(v) ? v.map(fr).join(", ") : (q.opts ? fr(v || "") : (v || ""));
+    if (q.other && data[q.id+"_autre"]) payload[`${key} (autre, en roumain)`] = data[q.id+"_autre"];
+  }));
+  try{
+    const r = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      method:"POST", headers:{"Accept":"application/json","Content-Type":"application/json"}, body:JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(r.status);
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    $("form").classList.add("hidden"); $("done").classList.remove("hidden");
+    step = STEPS.length; drawHall(); $("savedNote").textContent = "";
+  } catch(e){
+    err.textContent = "Trimiterea nu a reușit. Verifică conexiunea și încearcă din nou: răspunsurile tale sunt păstrate.";
+    err.style.display = "block"; btn.disabled = false; btn.textContent = "Trimite răspunsurile";
+  }
+}
+
+drawHall();
+if (Object.keys(data).length){
+  $("start").textContent = "Continuă de unde ai rămas";
+  $("savedNote").textContent = "Am găsit răspunsurile tale anterioare.";
+}
+</script>
+</body>
+</html>
