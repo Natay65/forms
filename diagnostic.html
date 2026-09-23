@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Où passe ta semaine ? — diagnostic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --ink:#1B2A2F; --muted:#5A6A6F;
+  --accent:#1F6F5C; --accent-ink:#FFFFFF; --mark:#E8B931; --line:#D3DCD8; --error:#B3261E;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111A1C; --surface:#18242A; --ink:#E6EDEA; --muted:#98A8A5;
+    --accent:#5CC2A5; --accent-ink:#0E1A17; --line:#2C3A3F; --error:#F2867E;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55}
+.wrap{max-width:660px;margin:0 auto;padding:28px 18px 64px}
+
+/* progression : une semaine qui se remplit */
+.week{margin:0 0 20px}
+.week-bar{position:relative;height:10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.week-fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);transition:width .35s ease}
+.week-ticks{position:absolute;inset:0;display:flex}
+.week-ticks span{flex:1;border-right:1px solid var(--line)}
+.week-ticks span:last-child{border-right:0}
+.week-meta{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-top:6px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 22px 22px}
+h1{font-family:var(--display);font-weight:800;font-size:48px;line-height:1;letter-spacing:-.5px;margin:0 0 16px}
+h2{font-family:var(--display);font-weight:600;font-size:30px;line-height:1.1;margin:0 0 6px}
+.lead{color:var(--muted);margin:0 0 20px;max-width:60ch}
+.intro p{margin:0 0 12px;max-width:60ch}
+
+.q{margin:0 0 26px;border:0;padding:0;min-width:0}
+.q legend,.q > label.qt{display:block;font-weight:600;font-size:18px;margin:0 0 4px;padding:0}
+.hint{display:block;color:var(--muted);font-size:15px;margin:0 0 10px}
+.req{color:var(--accent)}
+
+input[type=text],textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--bg);
+  border:1.5px solid var(--line);padding:11px 13px;border-radius:10px;
+}
+textarea{min-height:92px;resize:vertical}
+input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.other{margin-top:10px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.chip span{display:inline-block;padding:9px 16px;border:1.5px solid var(--line);background:var(--surface);
+  border-radius:999px;font-size:16px;cursor:pointer;user-select:none;transition:background .15s,border-color .15s}
+.chip input:checked + span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip input:focus-visible + span{outline:3px solid var(--mark);outline-offset:2px}
+.chip input:disabled + span{opacity:.4;cursor:not-allowed}
+.counter{font-size:14px;color:var(--muted);margin-top:8px}
+
+.err{color:var(--error);font-size:15px;margin-top:8px;display:none}
+.q.invalid .err{display:block}
+
+.nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px}
+button{font-family:var(--body);font-weight:600;font-size:17px;padding:12px 22px;border-radius:999px;
+  border:2px solid var(--ink);background:var(--ink);color:var(--surface);cursor:pointer}
+button.ghost{background:transparent;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+button[disabled]{opacity:.5;cursor:wait}
+.saved{font-size:14px;color:var(--muted);text-align:center;margin-top:14px}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:38px}h2{font-size:26px}.card{padding:22px 16px 18px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="week hidden" id="week" aria-hidden="true">
+    <div class="week-bar"><div class="week-fill" id="weekFill"></div><div class="week-ticks"><span></span><span></span><span></span><span></span><span></span></div></div>
+    <div class="week-meta"><span id="stepCount"></span><span id="stepName"></span></div>
+  </div>
+
+  <section class="card intro" id="intro">
+    <h1>Où passe ta semaine ?</h1>
+    <p>Ce diagnostic sert à repérer les tâches qui te prennent du temps et qui pourraient se faire toutes seules : relances, ressaisies, plannings, messages qui se perdent…</p>
+    <p>Le questionnaire s'adapte à tes réponses : tu ne vois que ce qui te concerne. Compte 8 à 12 minutes, presque tout se fait en un clic.</p>
+    <p class="lead">Tes réponses sont enregistrées sur cet appareil au fur et à mesure : tu peux t'arrêter et reprendre plus tard.</p>
+    <div class="nav"><span></span><button type="button" id="start">Commencer</button></div>
+  </section>
+
+  <form class="card hidden" id="form" novalidate>
+    <h2 id="stepTitle"></h2>
+    <p class="lead" id="stepLead"></p>
+    <div id="stepBody"></div>
+    <div class="nav">
+      <button type="button" class="ghost" id="prev">Retour</button>
+      <button type="button" id="next">Continuer</button>
+    </div>
+    <p class="err" id="sendErr" role="alert" style="display:none"></p>
+  </form>
+
+  <section class="card hidden" id="done">
+    <h2>C'est envoyé, merci</h2>
+    <p>On analyse tes réponses et on revient vers toi avec les pistes qui te feraient gagner le plus de temps.</p>
+  </section>
+
+  <p class="saved" id="savedNote"></p>
+</main>
+
+<script>
+/* ========= CONFIG ========= */
+const FORMSPREE_ID = "maenognq";   // <- ton ID Formspree (crée un formulaire dédié si tu veux séparer les réponses)
+const STORAGE_KEY = "diagnostic-automatisation-v1";
+
+const TIME = ["Moins d'1 h","1 à 3 h","3 à 5 h","5 à 10 h","Plus de 10 h"];
+const TIME_MID = {"Moins d'1 h":0.5,"1 à 3 h":2,"3 à 5 h":4,"5 à 10 h":7.5,"Plus de 10 h":12};
+
+/* ========= MODULES ========= */
+const MODULES = {
+  planning: { label:"Planning et équipes", lead:"Organiser qui fait quoi, quand et où.", qs:[
+    {id:"pl_outil", type:"multi", other:true, label:"Avec quoi tu organises le planning ?",
+      opts:["Excel / Google Sheets","Papier ou tableau blanc","Agenda (Google, Outlook…)","Un logiciel dédié","Tout est dans ma tête"]},
+    {id:"pl_notif", type:"multi", other:true, label:"Comment tu préviens tes équipes ?",
+      opts:["WhatsApp","SMS","Appel","Email","Affichage"]},
+    {id:"pl_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Faire le planning","Les changements de dernière minute","Savoir qui est disponible","Relancer pour avoir des confirmations","Rassembler les heures travaillées","Préparer la paie"]},
+    {id:"pl_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", hint:"Messages et appels compris.", opts:TIME},
+    {id:"pl_galere", type:"textarea", label:"Raconte ta dernière galère de planning.", hint:"Ce qui s'est passé, ce que ça t'a coûté."},
+  ]},
+  devis: { label:"Devis et facturation", lead:"Du devis envoyé à la facture payée.", qs:[
+    {id:"df_outil", type:"multi", other:true, label:"Comment tu fais tes devis et factures ?",
+      opts:["Word ou Excel","Un logiciel de facturation","Mon logiciel métier","À la main"]},
+    {id:"df_volume", type:"single", label:"Combien de devis par mois, environ ?", opts:["Moins de 10","10 à 30","30 à 100","Plus de 100"]},
+    {id:"df_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Rédiger les devis","Relancer les devis sans réponse","Transformer un devis en facture","Relancer les impayés","Ressaisir les infos client","Savoir qui a payé"]},
+    {id:"df_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", opts:TIME},
+    {id:"df_galere", type:"textarea", label:"Raconte ta dernière galère de devis ou de facture."},
+  ]},
+  clients: { label:"Clients et prospection", lead:"Trouver des clients, les suivre, les faire revenir.", qs:[
+    {id:"cp_source", type:"multi", other:true, label:"D'où viennent tes clients ?",
+      opts:["Bouche-à-oreille","Mon site web","Réseaux sociaux","Salons et événements","Prospection directe","Plateformes et annuaires"]},
+    {id:"cp_suivi", type:"multi", other:true, label:"Où tu suis tes clients et prospects ?",
+      opts:["Un CRM","Excel / Google Sheets","Dans mes mails","Sur papier","Dans ma tête"]},
+    {id:"cp_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Répondre vite aux nouvelles demandes","Relancer les prospects","Savoir où en est chaque client","Trouver de nouveaux clients","Faire revenir les anciens clients","Obtenir des avis clients"]},
+    {id:"cp_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", opts:TIME},
+    {id:"cp_galere", type:"textarea", label:"Raconte la dernière fois où tu as perdu un client ou une affaire."},
+  ]},
+  messages: { label:"Emails et messages", lead:"Tout ce qui arrive par mail, téléphone ou WhatsApp.", qs:[
+    {id:"em_volume", type:"single", label:"Combien de messages pro reçois-tu par jour ?", hint:"Mails, WhatsApp, SMS et appels confondus.",
+      opts:["Moins de 20","20 à 50","50 à 100","Plus de 100"]},
+    {id:"em_canaux", type:"multi", other:true, label:"Par où arrivent les demandes ?",
+      opts:["Email","WhatsApp","SMS","Téléphone","Formulaire du site","Réseaux sociaux"]},
+    {id:"em_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Trier ce qui est urgent","Répondre toujours aux mêmes questions","Des demandes qui se perdent","Transmettre à la bonne personne","Recopier les infos ailleurs","Relancer quand on ne me répond pas"]},
+    {id:"em_questions", type:"textarea", label:"Quelles questions reviennent le plus souvent ?"},
+    {id:"em_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", opts:TIME},
+  ]},
+  admin: { label:"Administratif et documents", lead:"Les papiers, les dossiers, les signatures.", qs:[
+    {id:"ad_docs", type:"multi", other:true, label:"Quels documents tu gères le plus ?",
+      opts:["Contrats","Bons d'intervention ou de livraison","Dossiers clients","Documents RH","Notes de frais","Certifications et conformité","Comptes-rendus"]},
+    {id:"ad_rangement", type:"single", label:"Où sont rangés tes documents ?",
+      opts:["Sur l'ordinateur","Dans un Drive ou un cloud","Sur papier","Dans mon logiciel métier","Un peu partout"]},
+    {id:"ad_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Remplir les mêmes infos plusieurs fois","Retrouver un document","Faire signer","Relancer pour obtenir des pièces","Classer et archiver","Préparer les éléments pour le comptable"]},
+    {id:"ad_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", opts:TIME},
+    {id:"ad_galere", type:"textarea", label:"Raconte ta dernière galère administrative."},
+  ]},
+  stock: { label:"Stock, production, logistique", lead:"Ce qui entre, ce qui sort, ce qui se fabrique.", qs:[
+    {id:"st_quoi", type:"multi", other:true, label:"Qu'est-ce que tu dois suivre ?",
+      opts:["Du matériel","Des marchandises","De la production","Des livraisons","Des achats fournisseurs","Des véhicules ou des machines"]},
+    {id:"st_suivi", type:"single", label:"Avec quoi tu le suis ?", opts:["Un logiciel ou un ERP","Excel / Google Sheets","Sur papier","Pas vraiment suivi"]},
+    {id:"st_friction", type:"multi", max:3, label:"Qu'est-ce qui coince le plus ?",
+      opts:["Savoir ce qui est en stock","Les ruptures ou le surstock","Passer les commandes fournisseurs","Planifier la production","Organiser les livraisons","Suivre le matériel sorti ou prêté"]},
+    {id:"st_temps", type:"single", label:"Par semaine, combien de temps là-dessus ?", opts:TIME},
+    {id:"st_galere", type:"textarea", label:"Raconte ta dernière galère de stock ou de livraison."},
+  ]},
+};
+const MODULE_KEYS = Object.keys(MODULES);
+const labelOf = k => MODULES[k].label;
+const keyOf = label => MODULE_KEYS.find(k => MODULES[k].label === label);
+
+/* ========= STATIC STEPS ========= */
+const S_PROFIL = { key:"profil", title:"Ton entreprise", lead:"Pour savoir à qui on parle.", qs:[
+  {id:"nom", type:"text", label:"Ton prénom et nom", req:true},
+  {id:"entreprise", type:"text", label:"Nom de l'entreprise", req:true},
+  {id:"contact", type:"text", label:"Email ou téléphone", hint:"Pour revenir vers toi avec des pistes concrètes.", req:true},
+  {id:"secteur", type:"single", other:true, label:"Ton secteur", req:true,
+    opts:["BTP et second œuvre","Événementiel","Industrie et production","Commerce","Services aux entreprises","Immobilier","Assurance et finance","Santé et bien-être","Restauration et hôtellerie","Transport et logistique","Nettoyage et maintenance"]},
+  {id:"taille", type:"single", label:"Combien de personnes dans l'entreprise ?", req:true,
+    opts:["Juste moi","2 à 5","6 à 15","16 à 50","51 à 200","Plus de 200"]},
+  {id:"role", type:"single", label:"Ton rôle", opts:["Dirigeant","Associé","Manager","Assistant ou office manager","Autre"]},
+  {id:"lieu", type:"single", label:"Où travaillent tes équipes ?",
+    opts:["Surtout au bureau","Surtout sur le terrain","En atelier ou en magasin","Un mélange"]},
+]};
+const S_OUTILS = { key:"outils", title:"Tes outils", lead:"Ce que tu utilises déjà au quotidien.", qs:[
+  {id:"outils", type:"multi", other:true, label:"Avec quoi tu travailles ?", hint:"Coche tout ce qui s'applique.",
+    opts:["Excel / Google Sheets","Google Workspace","Microsoft 365","Un logiciel métier","Un CRM","Un logiciel de compta ou de facturation","Un logiciel de paie","WhatsApp pour le travail","Beaucoup de papier"]},
+  {id:"outils_lies", type:"single", label:"Tes outils se parlent-ils entre eux ?",
+    opts:["Oui, la plupart","Un peu","Pas du tout, je recopie"]},
+  {id:"budget", type:"single", label:"Combien tu dépenses en logiciels par mois, environ ?",
+    opts:["Rien ou presque","Moins de 100 €","100 à 300 €","300 à 1 000 €","Plus de 1 000 €","Je ne sais pas"]},
+]};
+const S_CARTE = { key:"carte", title:"Ta semaine", lead:"La carte de ce qui te prend du temps.", qs:[
+  {id:"carte", type:"multi", req:true, label:"Coche toutes les activités qui te prennent du temps",
+    hint:"Autant que tu veux.", opts:MODULE_KEYS.map(labelOf)},
+  {id:"carte_autre", type:"text", label:"Autre chose qui te prend du temps ?"},
+]};
+const S_TOP = { key:"top", title:"Ce qui pèse le plus", lead:"On va creuser seulement celles-là.", qs:[
+  {id:"top", type:"multi", max:3, req:true, label:"Parmi elles, lesquelles te pèsent le plus ?", optsFn:() => data.carte || []},
+]};
+const S_FINAL = { key:"final", title:"Pour finir", lead:"Cinq questions, et c'est terminé.", qs:[
+  {id:"ressaisie", type:"textarea", label:"Qu'est-ce que tu ressaisis plusieurs fois ?", hint:"Une info tapée dans un devis, puis dans une facture, puis dans un tableau…"},
+  {id:"deleguer", type:"textarea", label:"Quelle tâche déléguerais-tu demain si tu pouvais ?"},
+  {id:"une_chose", type:"textarea", label:"Si une seule chose devait disparaître de ta semaine, ce serait laquelle ?"},
+  {id:"decideur", type:"single", label:"Qui décide de ce genre d'achat ?", opts:["Moi seul","Moi avec un associé","Quelqu'un d'autre"]},
+  {id:"delai", type:"single", label:"Tu aimerais que ce soit réglé quand ?", opts:["Dès que possible","Dans les 3 mois","Dans l'année","Je me renseigne"]},
+  {id:"libre", type:"textarea", label:"Autre chose à nous dire ?"},
+]};
+
+/* ========= STATE ========= */
+let data = {};
+let stepIdx = 0;
+try { const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); if (s) { data = s.data || {}; stepIdx = s.step || 0; } } catch(e) {}
+const save = () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({data, step:stepIdx})); } catch(e) {} };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* Top effectif : si 3 activités ou moins, toutes sont creusées */
+function topKeys(){
+  const carte = data.carte || [];
+  const labels = carte.length <= 3 ? carte : (data.top || []).filter(l => carte.includes(l));
+  return labels.map(keyOf).filter(Boolean);
+}
+
+function buildSteps(){
+  const steps = [S_PROFIL, S_OUTILS, S_CARTE];
+  if ((data.carte || []).length > 3) steps.push(S_TOP);
+  topKeys().forEach(k => steps.push({ key:"mod_"+k, title:MODULES[k].label, lead:MODULES[k].lead, qs:MODULES[k].qs }));
+  const rest = (data.carte || []).filter(l => !topKeys().includes(keyOf(l)));
+  if (rest.length) steps.push({ key:"reste", title:"Le reste de ta semaine", lead:"Juste une estimation pour chaque activité.",
+    qs: rest.map(l => ({ id:"temps_"+keyOf(l), type:"single", label:`${l} : combien de temps par semaine ?`, opts:TIME })) });
+  steps.push(S_FINAL);
+  return steps;
+}
+
+/* ========= RENDER ========= */
+function renderQ(q){
+  const reqMark = q.req ? ' <span class="req">*</span>' : '';
+  const hint = q.hint ? `<span class="hint">${esc(q.hint)}</span>` : '';
+  const errMsg = q.max ? `Choisis entre 1 et ${q.max} réponses.` : 'Cette réponse est nécessaire.';
+  if (q.type === "text" || q.type === "textarea"){
+    const v = esc(data[q.id] || "");
+    const field = q.type === "text"
+      ? `<input type="text" id="f_${q.id}" data-id="${q.id}" value="${v}">`
+      : `<textarea id="f_${q.id}" data-id="${q.id}">${v}</textarea>`;
+    return `<div class="q" data-q="${q.id}"><label class="qt" for="f_${q.id}">${esc(q.label)}${reqMark}</label>${hint}${field}<div class="err">${errMsg}</div></div>`;
+  }
+  const opts = q.optsFn ? q.optsFn() : q.opts;
+  const multi = q.type === "multi";
+  const cur = data[q.id] || (multi ? [] : "");
+  const chips = opts.map(o => {
+    const checked = multi ? cur.includes(o) : cur === o;
+    return `<label class="chip"><input type="${multi?'checkbox':'radio'}" name="${q.id}" value="${esc(o)}" ${checked?'checked':''}><span>${esc(o)}</span></label>`;
+  }).join("");
+  const other = q.other ? `<input type="text" class="other" data-id="${q.id}_autre" placeholder="Autre, précise ici" aria-label="Autre réponse" value="${esc(data[q.id+'_autre']||'')}">` : '';
+  const counter = q.max ? `<div class="counter" id="c_${q.id}"></div>` : '';
+  return `<fieldset class="q" data-q="${q.id}"><legend>${esc(q.label)}${reqMark}</legend>${hint}<div class="chips">${chips}</div>${other}${counter}<div class="err">${errMsg}</div></fieldset>`;
+}
+
+function currentSteps(){ return buildSteps(); }
+
+function renderStep(){
+  const steps = currentSteps();
+  if (stepIdx >= steps.length) stepIdx = steps.length - 1;
+  const s = steps[stepIdx];
+  $("stepTitle").textContent = s.title;
+  $("stepLead").textContent = s.lead;
+  $("stepBody").innerHTML = s.qs.map(renderQ).join("");
+  $("prev").style.visibility = stepIdx === 0 ? "hidden" : "visible";
+  $("next").textContent = stepIdx === steps.length - 1 ? "Envoyer mes réponses" : "Continuer";
+  s.qs.filter(q => q.max).forEach(updateMax);
+  $("week").classList.remove("hidden");
+  $("weekFill").style.width = `${Math.round((stepIdx / steps.length) * 100)}%`;
+  $("stepCount").textContent = `Étape ${stepIdx + 1} sur ${steps.length}`;
+  $("stepName").textContent = s.title;
+  window.scrollTo({top:0});
+}
+
+function findQ(id){ for (const s of currentSteps()) { const q = s.qs.find(q => q.id === id); if (q) return q; } }
+
+function updateMax(q){
+  const n = (data[q.id] || []).length;
+  document.querySelectorAll(`input[name="${q.id}"]`).forEach(i => { i.disabled = !i.checked && n >= q.max; });
+  const c = $("c_"+q.id); if (c) c.textContent = `${n} sur ${q.max}`;
+}
+
+$("stepBody").addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.id){ data[t.dataset.id] = t.value; }
+  else if (t.type === "radio"){ data[t.name] = t.value; }
+  else if (t.type === "checkbox"){
+    data[t.name] = [...document.querySelectorAll(`input[name="${t.name}"]:checked`)].map(i => i.value);
+    if (t.name === "carte" && data.top) data.top = data.top.filter(l => data.carte.includes(l));
+    const q = findQ(t.name); if (q && q.max) updateMax(q);
+  }
+  const box = t.closest(".q"); if (box) box.classList.remove("invalid");
+  save();
+});
+
+function validate(){
+  let ok = true, first = null;
+  currentSteps()[stepIdx].qs.forEach(q => {
+    if (!q.req) return;
+    const v = data[q.id];
+    const empty = Array.isArray(v) ? v.length === 0 : !String(v || "").trim();
+    const box = document.querySelector(`[data-q="${q.id}"]`);
+    if (empty){ ok = false; box.classList.add("invalid"); first = first || box; }
+  });
+  if (first) first.scrollIntoView({behavior:"smooth", block:"center"});
+  return ok;
+}
+
+/* ========= NAV ========= */
+$("start").onclick = () => { $("intro").classList.add("hidden"); $("form").classList.remove("hidden"); renderStep(); };
+$("prev").onclick = () => { if (stepIdx > 0){ stepIdx--; save(); renderStep(); } };
+$("next").onclick = async () => {
+  if (!validate()) return;
+  if (stepIdx < currentSteps().length - 1){ stepIdx++; save(); renderStep(); return; }
+  await send();
+};
+
+/* ========= ENVOI ========= */
+function summary(){
+  let total = 0; const detail = [];
+  (data.carte || []).forEach(l => {
+    const k = keyOf(l);
+    const modTimeId = MODULES[k].qs.find(q => q.id.endsWith("_temps")).id;
+    const ans = topKeys().includes(k) ? data[modTimeId] : data["temps_"+k];
+    const v = TIME_MID[ans]; if (v !== undefined){ total += v; detail.push(`${l} : ${ans}`); }
+  });
+  return { total, detail };
+}
+
+async function send(){
+  const btn = $("next"), err = $("sendErr");
+  btn.disabled = true; btn.textContent = "Envoi…"; err.style.display = "none";
+  const steps = currentSteps();
+  const { total, detail } = summary();
+  const payload = {
+    _subject: `Diagnostic automatisation — ${data.entreprise || "sans nom"} (${data.secteur || "secteur ?"})`,
+    "SYNTHÈSE | Activités cochées": (data.carte || []).join(", "),
+    "SYNTHÈSE | Activités creusées": topKeys().map(labelOf).join(", "),
+    "SYNTHÈSE | Temps par activité": detail.join(" ; "),
+    "SYNTHÈSE | Estimation temps total (h/semaine, milieu des tranches)": total ? String(total) : "non renseigné",
+  };
+  steps.forEach(s => s.qs.forEach(q => {
+    const key = `${s.title} | ${q.label}`;
+    const v = data[q.id];
+    payload[key] = Array.isArray(v) ? v.join(", ") : (v || "");
+    if (q.other && data[q.id+"_autre"]) payload[`${key} (autre)`] = data[q.id+"_autre"];
+  }));
+  try{
+    const r = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      method:"POST", headers:{"Accept":"application/json","Content-Type":"application/json"}, body:JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(r.status);
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    $("form").classList.add("hidden"); $("done").classList.remove("hidden");
+    $("weekFill").style.width = "100%"; $("stepCount").textContent = "Terminé"; $("stepName").textContent = "";
+    $("savedNote").textContent = "";
+  } catch(e){
+    err.textContent = "L'envoi n'a pas abouti. Vérifie ta connexion et réessaie : tes réponses sont conservées.";
+    err.style.display = "block"; btn.disabled = false; btn.textContent = "Envoyer mes réponses";
+  }
+}
+
+/* ========= INIT ========= */
+if (Object.keys(data).length){
+  $("start").textContent = "Reprendre où j'en étais";
+  $("savedNote").textContent = "Tes réponses précédentes ont été retrouvées.";
+}
+</script>
+</body>
+</html>
